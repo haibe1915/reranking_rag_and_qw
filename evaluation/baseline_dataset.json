@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "query": "đồ mặc mùa đông",
+    "ground_truth": "Quần áo giữ ấm như áo khoác, hoodie, quần dài..."
+  },
+  {
+    "id": 2,
+    "query": "cách bảo quản áo len",
+    "ground_truth": "Giặt nhẹ, phơi trong bóng râm, tránh treo lâu dài để không bị giãn"
+  }
+]

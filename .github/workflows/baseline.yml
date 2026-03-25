@@ -1,0 +1,39 @@
+name: Baseline CI
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run tests
+        run: |
+          # Run pytest to ensure tests pass before generating baseline
+          pytest -q
+
+      - name: Run baseline runner
+        run: |
+          python scripts/run_baseline.py
+
+      - name: Upload baseline result
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline_result
+          path: evaluation/baseline_result.json
