@@ -13,7 +13,7 @@ def run_rag_pipeline(user_query, ground_truth=None):
     generator = LLMGenerator(model_name="gpt-4")
     evaluator = RAGEvaluator()
 
-    print(f"--- Đang xử lý truy vấn: {user_query} ---")
+    print(f"--- Đang xử lý: {user_query} ---")
 
     expanded_queries = rewriter.rewrite(user_query) 
     
