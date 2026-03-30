@@ -1,0 +1,30 @@
+{
+  "per_example": [
+    {
+      "id": 1,
+      "query": "đồ mặc mùa đông",
+      "ground_truth": "Quần áo giữ ấm như áo khoác, hoodie, quần dài...",
+      "answer": "[stub answer using model=gpt-4] Context: document 0 document 1 document 2 document 3 document 4",
+      "metrics": {
+        "em": 0.0,
+        "f1": 0.0,
+        "faithfulness": 0.5
+      }
+    },
+    {
+      "id": 2,
+      "query": "cách bảo quản áo len",
+      "ground_truth": "Giặt nhẹ, phơi trong bóng râm, tránh treo lâu dài để không bị giãn",
+      "answer": "[stub answer using model=gpt-4] Context: document 0 document 1 document 2 document 3 document 4",
+      "metrics": {
+        "em": 0.0,
+        "f1": 0.0,
+        "faithfulness": 0.5
+      }
+    }
+  ],
+  "aggregates": {
+    "avg_em": 0.0,
+    "avg_f1": 0.0
+  }
+}

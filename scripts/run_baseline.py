@@ -1,10 +1,14 @@
 import json
 import os
+import sys
 from statistics import mean
 
-from main import run_rag_pipeline
-
+# Ensure project root is on sys.path so imports like `from main import ...` work
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+from main import run_rag_pipeline
 BASELINE_DATA = os.path.join(BASE_DIR, "evaluation", "baseline_dataset.json")
 BASELINE_RESULT = os.path.join(BASE_DIR, "evaluation", "baseline_result.json")
 
