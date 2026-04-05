@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -9,6 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT_DIR / "data" / "vhealthqa" / "raw"
 PROCESSED_DIR = ROOT_DIR / "data" / "vhealthqa" / "processed"
 EVAL_DIR = ROOT_DIR / "evaluation"
+DATASET_TAG = "vhealthqa"
 
 CSV_BY_SPLIT = {
     "train": "train.csv",
@@ -29,7 +31,6 @@ def _normalize_row(row: Dict[str, Any]) -> Dict[str, Any]:
     link = _to_clean_str(row.get("link"))
     return {
         "id": _to_clean_str(row.get("id")),
-        "uit_id": "",
         "title": "vhealthqa",
         "context": link,
         "query": _to_clean_str(row.get("question")),
@@ -37,6 +38,22 @@ def _normalize_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "is_impossible": False,
         "link": link,
     }
+
+
+def _normalize_id_token(value: Any) -> str:
+    token = re.sub(r"[^a-z0-9]+", "_", _to_clean_str(value).lower()).strip("_")
+    return token or "default"
+
+
+def assign_standard_ids(rows: List[Dict[str, Any]], split: str, group_key: str = "") -> None:
+    split_token = _normalize_id_token(split)
+    for idx, row in enumerate(rows, start=1):
+        if group_key:
+            group_token = _normalize_id_token(row.get(group_key))
+            if group_token != "default":
+                row["id"] = f"{DATASET_TAG}:{group_token}:{split_token}:{idx:06d}"
+                continue
+        row["id"] = f"{DATASET_TAG}:{split_token}:{idx:06d}"
 
 
 def load_and_normalize_split(split: str) -> List[Dict[str, Any]]:
@@ -97,6 +114,7 @@ def main() -> None:
 
     for split in CSV_BY_SPLIT:
         rows = load_and_normalize_split(split)
+        assign_standard_ids(rows, split=split)
         all_rows_by_split[split] = rows
 
         out_jsonl = PROCESSED_DIR / f"{split}.jsonl"

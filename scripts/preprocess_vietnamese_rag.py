@@ -10,6 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT_DIR / "data" / "vietnamese_rag" / "raw"
 PROCESSED_DIR = ROOT_DIR / "data" / "vietnamese_rag" / "processed"
 EVAL_DIR = ROOT_DIR / "evaluation"
+DATASET_TAG = "vietnamese_rag"
 
 
 def _to_clean_str(value: Any) -> str:
@@ -65,10 +66,25 @@ def _extract_primary_answer(value: Any) -> str:
     return ""
 
 
+def _normalize_id_token(value: Any) -> str:
+    token = re.sub(r"[^a-z0-9]+", "_", _to_clean_str(value).lower()).strip("_")
+    return token or "default"
+
+
+def assign_standard_ids(rows: List[Dict[str, Any]], split: str, group_key: str = "") -> None:
+    split_token = _normalize_id_token(split)
+    for idx, row in enumerate(rows, start=1):
+        if group_key:
+            group_token = _normalize_id_token(row.get(group_key))
+            if group_token != "default":
+                row["id"] = f"{DATASET_TAG}:{group_token}:{split_token}:{idx:06d}"
+                continue
+        row["id"] = f"{DATASET_TAG}:{split_token}:{idx:06d}"
+
+
 def _normalize_bkai_or_legal(row: Dict[str, Any], source: str) -> Dict[str, Any]:
     return {
         "id": "",
-        "uit_id": "",
         "title": source,
         "context": _join_context(row.get("context")),
         "query": _to_clean_str(row.get("question")),
@@ -85,7 +101,6 @@ def _normalize_vi_rag(row: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "id": "",
-        "uit_id": "",
         "title": _to_clean_str(row.get("spec_field")) or "vi_rag",
         "context": context,
         "query": _to_clean_str(row.get("question")),
@@ -103,7 +118,6 @@ def _normalize_rag_viquad(row: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "id": _to_clean_str(row.get("id")),
-        "uit_id": _to_clean_str(row.get("uit_id")),
         "title": _to_clean_str(row.get("title")),
         "context": _to_clean_str(row.get("contexts")),
         "query": _to_clean_str(row.get("question")),
@@ -129,7 +143,7 @@ def load_and_normalize_all() -> List[Dict[str, Any]]:
     for row in _read_jsonl(bkai_path):
         all_rows.append(_normalize_bkai_or_legal(row, source="modified_data_BKAI"))
 
-    legal_path = RAW_DIR / "modify_legal_corpus.json"
+    legal_path = RAW_DIR / "modify_legal_corpus.jsonl"
     for row in _read_jsonl(legal_path):
         all_rows.append(_normalize_bkai_or_legal(row, source="modify_legal_corpus"))
 
@@ -212,6 +226,7 @@ def main() -> None:
     splits = split_rows(all_rows, seed=args.seed, train_ratio=args.train_ratio, val_ratio=args.val_ratio)
 
     for split_name, rows in splits.items():
+        assign_standard_ids(rows, split=split_name)
         out_jsonl = PROCESSED_DIR / f"{split_name}.jsonl"
         write_jsonl(out_jsonl, rows)
         print(f"[{split_name}] Wrote {len(rows)} rows -> {out_jsonl}")

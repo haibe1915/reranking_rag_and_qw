@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -7,6 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT_DIR / "data" / "vimqa" / "raw"
 PROCESSED_DIR = ROOT_DIR / "data" / "vimqa" / "processed"
 EVAL_DIR = ROOT_DIR / "evaluation"
+DATASET_TAG = "vimqa"
 
 RAW_BY_SPLIT = {
     "train": "vimqa_train.json",
@@ -21,9 +23,14 @@ def _to_clean_str(value: Any) -> str:
     return str(value).strip()
 
 
+def _normalize_whitespace(text: str) -> str:
+    # Collapse all whitespace, including newlines and tabs, into single spaces.
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def _flatten_context(context: Any) -> str:
     if not isinstance(context, list):
-        return _to_clean_str(context)
+        return _normalize_whitespace(_to_clean_str(context))
 
     chunks: List[str] = []
     for item in context:
@@ -34,7 +41,7 @@ def _flatten_context(context: Any) -> str:
                 body_text = " ".join(_to_clean_str(x) for x in body if _to_clean_str(x))
             else:
                 body_text = _to_clean_str(body)
-            combined = "\n".join(part for part in [title, body_text] if part)
+            combined = " ".join(part for part in [title, body_text] if part)
             if combined:
                 chunks.append(combined)
         else:
@@ -42,20 +49,35 @@ def _flatten_context(context: Any) -> str:
             if text:
                 chunks.append(text)
 
-    return "\n\n".join(chunks)
+    return _normalize_whitespace(" ".join(chunks))
 
 
 def _normalize_row(row: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "id": _to_clean_str(row.get("_id")),
-        "uit_id": "",
-        "title": _to_clean_str(row.get("type")),
+        "title": "",
         "context": _flatten_context(row.get("context")),
         "query": _to_clean_str(row.get("question")),
         "ground_truth": _to_clean_str(row.get("answer")),
         "is_impossible": False,
         "supporting_facts": row.get("supporting_facts", []),
     }
+
+
+def _normalize_id_token(value: Any) -> str:
+    token = re.sub(r"[^a-z0-9]+", "_", _to_clean_str(value).lower()).strip("_")
+    return token or "default"
+
+
+def assign_standard_ids(rows: List[Dict[str, Any]], split: str, group_key: str = "") -> None:
+    split_token = _normalize_id_token(split)
+    for idx, row in enumerate(rows, start=1):
+        if group_key:
+            group_token = _normalize_id_token(row.get(group_key))
+            if group_token != "default":
+                row["id"] = f"{DATASET_TAG}:{group_token}:{split_token}:{idx:06d}"
+                continue
+        row["id"] = f"{DATASET_TAG}:{split_token}:{idx:06d}"
 
 
 def load_and_normalize_split(split: str) -> List[Dict[str, Any]]:
@@ -117,6 +139,7 @@ def main() -> None:
 
     for split in RAW_BY_SPLIT:
         rows = load_and_normalize_split(split)
+        assign_standard_ids(rows, split=split)
         all_rows_by_split[split] = rows
 
         out_jsonl = PROCESSED_DIR / f"{split}.jsonl"
