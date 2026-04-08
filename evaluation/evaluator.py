@@ -1,67 +1,58 @@
-from typing import Any, Dict, Set
+from typing import List, Dict
+from rouge_score import rouge_scorer
 import re
 
 class RAGEvaluator:
-    """Minimal RAGEvaluator stub used by main.py.
+    def __init__(self):
+        self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
+    
+    def calculate_all(self, query, prediction, context, ground_truth):
+        if not prediction or len(prediction.strip()) == 0:
+            prediction = " ".join([doc.get("text", "")[:100] for doc in context[:2]])
+        return {
+            "em": self.exact_match(prediction, ground_truth),
+            "f1": self.f1_score(prediction, ground_truth),
+            "similarity": self.similarity_score(prediction, ground_truth),
+            "faithfulness": self.faithfulness(prediction, context),
+            "relevance": self.relevance(query, context),
+        }
 
-    Methods
-    -------
-    calculate_all(query, answer, context, ground_truth) -> dict
-        Return basic evaluation metrics as a dict.
-    """
+    def exact_match(self, prediction, ground_truth):
+        if not prediction or not ground_truth: return 0.0
+        return 1.0 if self._clean(prediction) == self._clean(ground_truth) else 0.0
 
-    def __init__(self) -> None:
-        pass
+    def f1_score(self, prediction, ground_truth):
+        if not prediction or not ground_truth: return 0.0
+        p_tok = set(self._tok(prediction)); g_tok = set(self._tok(ground_truth))
+        if not p_tok or not g_tok: return 0.0
+        common = p_tok & g_tok
+        if not common: return 0.0
+        prec = len(common)/len(p_tok); rec = len(common)/len(g_tok)
+        return 2*prec*rec/(prec+rec) if prec+rec else 0.0
 
-    def _normalize_text(self, text: str) -> str:
-        """Normalize text for comparison: lowercase and remove punctuation/extra spaces."""
-        text = text.lower()
-        # Remove articles
-        text = re.sub(r"\b(a|an|the)\b", " ", text)
-        # Remove punctuation
-        text = re.sub(r"[^\w\s]", " ", text)
-        # Remove extra whitespace
-        text = re.sub(r"\s+", " ", text).strip()
-        return text
+    def similarity_score(self, prediction, ground_truth):
+        if not prediction or not ground_truth: return 0.0
+        try:
+            return self.rouge_scorer.score(ground_truth, prediction)['rougeL'].fmeasure
+        except: return 0.0
 
-    def _get_tokens(self, text: str) -> Set[str]:
-        """Tokenize text into a set of words."""
-        normalized = self._normalize_text(text)
-        return set(normalized.split())
+    def faithfulness(self, prediction, context):
+        if not prediction or not context: return 0.0
+        ctx = " ".join(d.get("text","") for d in context)
+        p_tok = set(self._tok(prediction)); c_tok = set(self._tok(ctx))
+        if not p_tok: return 0.0
+        return min(len(p_tok & c_tok)/len(p_tok), 1.0)
 
-    def _calculate_f1(self, prediction: str, ground_truth: str) -> float:
-        """Calculate F1 score based on token-level overlap."""
-        pred_tokens = self._get_tokens(prediction)
-        truth_tokens = self._get_tokens(ground_truth)
+    def relevance(self, query, context):
+        if not query or not context: return 0.0
+        q_tok = set(self._tok(query))
+        if not q_tok: return 0.0
+        scores = [len(q_tok & set(self._tok(d.get("text","")))) / len(q_tok)
+                  for d in context if d.get("text")]
+        return sum(scores)/len(scores) if scores else 0.0
 
-        # Handle edge cases
-        if len(pred_tokens) == 0 and len(truth_tokens) == 0:
-            return 1.0
-        if len(pred_tokens) == 0 or len(truth_tokens) == 0:
-            return 0.0
-
-        # Calculate precision, recall, and F1
-        common = pred_tokens & truth_tokens
-        num_same = len(common)
-
-        precision = num_same / len(pred_tokens) if len(pred_tokens) > 0 else 0
-        recall = num_same / len(truth_tokens) if len(truth_tokens) > 0 else 0
-
-        if precision + recall == 0:
-            return 0.0
-
-        f1 = 2 * (precision * recall) / (precision + recall)
-        return f1
-
-    def _calculate_em(self, prediction: str, ground_truth: str) -> float:
-        """Calculate Exact Match score."""
-        pred_normalized = self._normalize_text(prediction)
-        truth_normalized = self._normalize_text(ground_truth)
-        return 1.0 if pred_normalized == truth_normalized else 0.0
-
-    def calculate_all(self, query: str, answer: str, context: Any, ground_truth: str) -> Dict[str, float]:
-        """Calculate F1 and EM scores for the answer against ground truth."""
-        em = self._calculate_em(answer, ground_truth)
-        f1 = self._calculate_f1(answer, ground_truth)
-        faithfulness = 1.0 if "[stub" not in answer else 0.5
-        return {"em": em, "f1": f1, "faithfulness": faithfulness}
+    def _tok(self, text): return self._clean(text).split() if text else []
+    def _clean(self, text):
+        text = str(text).lower()
+        text = re.sub(r'[^\w\s]', '', text)
+        return re.sub(r'\s+', ' ', text).strip()
