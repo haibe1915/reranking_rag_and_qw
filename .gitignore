@@ -4,3 +4,19 @@
 *.jsonl
 *.log
 *.csv
+ 
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+
