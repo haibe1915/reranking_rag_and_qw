@@ -15,18 +15,37 @@ class RankReranker:
         self.llm_client = llm_client
         
         if method == "cross-encoder":
-            self.cross_encoder = CrossEncoder(cross_encoder_model)
+            self.cross_encoder = CrossEncoder(cross_encoder_model, device="cpu")
         else:
             self.cross_encoder = None
     
-    def rerank(self, query: str, documents: List[Dict], top_k: int = 5) -> List[Dict]:
-        """Rerank documents"""
-        if self.method == "cross-encoder":
-            return self._cross_encoder_rerank(query, documents, top_k)
-        elif self.method == "llm":
-            return self._llm_rerank(query, documents, top_k)
-        else:
-            return documents[:top_k]
+    def rerank(self, query: str, docs: List[Dict]) -> List[Dict]:
+        ce_scores = [self.cross_encoder.predict([(query, d["text"][:300])])[0] for d in docs]
+        llm_scores = [self.llm_score(query, d["text"]) for d in docs]
+
+        def normalize(x):
+            mn, mx = min(x), max(x)
+            return [(i - mn) / (mx - mn + 1e-8) for i in x]
+
+        ce_scores = normalize(ce_scores)
+        llm_scores = normalize(llm_scores)
+
+        for i, d in enumerate(docs):
+            d["score"] = self.ce_weight * ce_scores[i] + self.llm_weight * llm_scores[i]
+
+        return sorted(docs, key=lambda x: x["score"], reverse=True)
+    
+    def llm_score(self, query: str, doc: str) -> float:
+        if not self.llm_client:
+            return 0.0
+
+        prompt = RERANKING_PROMPT.format(question=query, document=doc[:300])
+        try:
+            output = self.llm_client.generate(prompt, max_tokens=16, temperature=0.0)
+            score = float(output.strip())
+            return max(0.0, min(score / 10.0, 1.0))
+        except Exception:
+            return 0.0
     
     def _cross_encoder_rerank(self, query: str, documents: List[Dict], top_k: int) -> List[Dict]:
         if not documents:
