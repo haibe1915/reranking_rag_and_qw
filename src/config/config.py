@@ -24,7 +24,7 @@ class RetrieverConfig(BaseSettings):
 
 class RerankerConfig(BaseSettings):
     reranker_type: str = "cross-encoder"  # cross-encoder, llm, none
-    cross_encoder_model: str = "BAAI/bge-reranker-v2-m3"
+    cross_encoder_model: str = "models/bge-reranker-vi/final"
     reranker_top_k: int = 5
 
 class DataConfig(BaseSettings):
