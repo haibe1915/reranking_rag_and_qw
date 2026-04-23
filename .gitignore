@@ -67,19 +67,4 @@ logs/
 .pytest_cache/
 
 # Environment variables
-GROQ_API_KEY 
-# Virtual environments
-.venv/
-venv/
-ENV/
-env/
-
-# Python cache
-__pycache__/
-*.py[cod]
-
-# IDE/editor files
-.vscode/
-.idea/
-*.swp
-
+GROQ_API_KEY
