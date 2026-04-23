@@ -11,7 +11,7 @@ class LLMConfig(BaseSettings):
     groq_model: str = "llama3-8b-8192"
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4o"
-    hf_model_name: str = "Qwen/Qwen2-7B-Instruct"
+    hf_model_name: str = "Viet-Mistral/Vistral-7B-Chat"
     hf_quantization: str = "4bit"
     hf_device: str = "cpu"
 
@@ -20,10 +20,10 @@ class RetrieverConfig(BaseSettings):
     vector_top_k: int = 10
     hybrid_bm25_weight: float = 0.5
     hybrid_vector_weight: float = 0.5
-    vector_model: str = "BAAI/bge-small-en-v1.5"
+    vector_model: str = "intfloat/multilingual-e5-base"
 
 class RerankerConfig(BaseSettings):
-    reranker_type: str = "cross-encoder"  # cross-encoder, llm, none
+    reranker_type: str = "cross-encoder"
     cross_encoder_model: str = "models/bge-reranker-vi/final"
     reranker_top_k: int = 5
 

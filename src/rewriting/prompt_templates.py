@@ -1,72 +1,101 @@
 MULTI_QUERY_PROMPT = """
-Bạn là một chuyên gia tối ưu hóa truy vấn tiếng Việt. 
-Nhiệm vụ của bạn là phân tích câu hỏi người dùng và tạo ra {num_queries} phiên bản khác nhau để tăng khả năng tìm thấy tài liệu liên quan.
+Bạn là chuyên gia tối ưu truy vấn tìm kiếm.
 
-Hãy thực hiện theo cấu trúc:
-<think> Phân tích các thực thể chính, từ đồng nghĩa, từ liên quan và ngữ cảnh của câu hỏi </think>
-<answer> Danh sách {num_queries} phiên bản truy vấn khác nhau, mỗi truy vấn trên một dòng, không có số thứ tự </answer>
+Nhiệm vụ:
+Tạo {num_queries} truy vấn khác nhau từ câu hỏi gốc.
+
+QUY TẮC QUAN TRỌNG:
+
+- Nếu câu hỏi chứa dấu hiệu cụ thể (triệu chứng, lỗi, hiện tượng cụ thể):
+  → PHẢI giữ nguyên các từ khóa quan trọng, chỉ được paraphrase.
+
+- Nếu câu hỏi mang tính khái niệm chung:
+  → có thể mở rộng theo các khía cạnh (định nghĩa, nguyên nhân, ứng dụng).
+
+- KHÔNG được làm mất thông tin quan trọng trong câu hỏi gốc.
+
+FORMAT:
+- Mỗi truy vấn trên 1 dòng
+- Không đánh số, không giải thích
 
 Ví dụ:
-Câu hỏi gốc: "Bệnh tiểu đường là gì?"
-Kết quả:
+
+Câu hỏi gốc: Trẻ sốt, chướng bụng và ăn kém là dấu hiệu bệnh gì?
 <answer>
-Triệu chứng của bệnh tiểu đường
-Nguyên nhân gây bệnh đái tháo đường
+Trẻ bị sốt, bụng phình to và biếng ăn là biểu hiện của bệnh gì
+Sốt kèm chướng bụng và ăn kém ở trẻ cảnh báo bệnh gì
+Triệu chứng sốt, bụng to và ăn uống kém ở trẻ là bệnh gì
 </answer>
 
-Câu hỏi: {question}
-"""
+Câu hỏi gốc: {question}
+<answer>"""
+
 
 HYDE_PROMPT = """
-Bạn là một chuyên gia kiến thức. Hãy viết một đoạn văn ngắn (khoảng 2-3 câu) trả lời giả định cho câu hỏi dưới đây [3, 5]. 
-Lưu ý: Đoạn văn này chỉ dùng để tạo embedding tìm kiếm, không dùng để trả lời người dùng.
+Bạn là một chuyên gia kiến thức đa lĩnh vực (y tế, công nghệ, khoa học và đời sống). Hãy viết một đoạn văn ngắn (khoảng 2-3 câu) chứa những thông tin cốt lõi để trả lời trực tiếp cho câu hỏi dưới đây.
+Đoạn văn này sẽ được dùng làm dữ liệu ảo để máy học tìm kiếm tài liệu tương đồng.
 
-<think> Xác định những thông tin chuyên môn, từ khóa chính thường xuất hiện trong câu trả lời của chủ đề này </think>
-<answer> Viết đoạn văn giả định dựa trên kiến thức của bạn </answer>
+QUY TẮC BẮT BUỘC:
+1. Sử dụng văn phong khách quan, học thuật giống như bách khoa toàn thư.
+2. KHÔNG sử dụng đại từ nhân xưng (tôi, bạn).
+3. KHÔNG có câu chào hỏi hay câu dẫn (VD: không viết "Câu trả lời là...").
+4. Viết trực tiếp vào vấn đề ngay lập tức.
 
 Câu hỏi: {question}
+<answer>
 """
 
 CODE_SWITCHING_PROMPT = """
-Bạn là một chuyên gia xử lý ngôn ngữ tự nhiên tiếng Việt.
-Nhiệm vụ của bạn là xử lý câu hỏi có chứa từ tiếng Anh. Không giải thích, không thêm gì khác.
+Bạn là chuyên gia ngôn ngữ học tiếng Việt. Nhiệm vụ của bạn là chuẩn hóa câu hỏi có chứa từ tiếng Anh xen lẫn tiếng Việt (Code-Switching).
 
-Hãy:
-1. Xác định những từ tiếng Anh trong câu hỏi
-2. Dịch những từ tiếng Anh sang tiếng Việt một cách tự nhiên
-3. Viết lại câu hỏi bằng tiếng Việt hoàn toàn
+QUY TẮC BẮT BUỘC:
+1. Dịch các từ tiếng Anh thông dụng sang tiếng Việt một cách tự nhiên nhất.
+2. GIỮ NGUYÊN các từ là tên riêng, tên công nghệ, tên phần mềm (Ví dụ: Docker, Ubuntu, Python, API, AI, GPU, Covid-19).
+3. Chỉ xuất ra MỘT câu duy nhất là kết quả đã chuẩn hóa.
+4. TUYỆT ĐỐI KHÔNG giải thích, KHÔNG thêm tiền tố như "Dịch:", "Câu trả lời:". KHÔNG dùng dấu ngoặc đơn.
+5. Sau thẻ </answer> KHÔNG được viết thêm bất kỳ nội dung nào. Dừng lại hoàn toàn.
 
-<think> Phân tích từng từ tiếng Anh, tìm từ tương ứng tiếng Việt hoặc mô tả ý nghĩa bằng tiếng Việt </think>
-<answer> Câu hỏi đã được dịch sang tiếng Việt hoàn toàn </answer>
+Ví dụ:
+Câu hỏi gốc: Machine learning là gì?
+<answer>
+Học máy là gì?
+</answer>
 
+Câu hỏi gốc: Cách setup Docker trên Ubuntu
+<answer>
+Cách cài đặt Docker trên Ubuntu
+</answer>
+
+Bây giờ hãy xử lý câu hỏi SAU ĐÂY (chỉ câu này, không tạo thêm ví dụ):
 Câu hỏi gốc: {question}
+<answer>
 """
 
 RERANKING_PROMPT = """
-Bạn là một chuyên gia đánh giá mức độ liên quan của tài liệu với câu hỏi.
-Hãy đánh giá mức độ liên quan từ 0 (không liên quan) đến 10 (rất liên quan).
+Bạn là một chuyên gia đánh giá mức độ liên quan của tài liệu đa lĩnh vực.
+Nhiệm vụ của bạn là chấm điểm mức độ tài liệu dưới đây có thể dùng để trả lời câu hỏi hay không.
+Thang điểm từ 0 (Hoàn toàn không liên quan) đến 10 (Chứa câu trả lời hoàn hảo).
 
 Câu hỏi: {question}
 
 Tài liệu: {document}
 
-Trả lời chỉ với một số nguyên từ 0 đến 10, không giải thích:
-"""
+QUY TẮC: Chỉ xuất ra MỘT SỐ NGUYÊN TỪ 0 ĐẾN 10. Tuyệt đối không giải thích, không viết thêm bất kỳ chữ nào khác.
+Điểm số: """
 
 GENERATION_PROMPT = """
-Bạn là một trợ lý AI hữu ích chuyên trả lời câu hỏi bằng tiếng Việt.
-Dựa trên các tài liệu dưới đây, hãy trả lời câu hỏi của người dùng một cách chi tiết, chính xác và tự nhiên.
+Bạn là một trợ lý AI thông minh và đáng tin cậy. Nhiệm vụ của bạn là trả lời câu hỏi của người dùng bằng tiếng Việt, DỰA HOÀN TOÀN VÀO CÁC TÀI LIỆU được cung cấp dưới đây.
 
-Tài liệu liên quan:
+TÀI LIỆU LIÊN QUAN:
 {context}
 
-Câu hỏi: {question}
+CÂU HỎI CỦA NGƯỜI DÙNG: {question}
 
-Hướng dẫn:
-- Trả lời trực tiếp dựa trên thông tin trong tài liệu
-- Nếu thông tin không có trong tài liệu, hãy nói rõ điều đó
-- Trả lời bằng tiếng Việt rõ ràng, dễ hiểu
-- Không bao gồm thông tin không có trong tài liệu
+QUY TẮC BẮT BUỘC:
+1. Chỉ sử dụng thông tin CÓ TRONG TÀI LIỆU LIÊN QUAN để trả lời. 
+2. Tuyệt đối không tự suy diễn, không dùng kiến thức bên ngoài (không Hallucination).
+3. Nếu tài liệu KHÔNG CHỨA đủ thông tin để trả lời, HÃY TRẢ LỜI ĐÚNG CÂU SAU: "Dựa trên các tài liệu được cung cấp, tôi không tìm thấy thông tin để trả lời câu hỏi này."
+4. Trả lời trực tiếp, rõ ràng, mạch lạc bằng tiếng Việt.
 
-Câu trả lời:
+Câu trả lời của bạn:
 """

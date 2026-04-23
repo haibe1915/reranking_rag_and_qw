@@ -47,6 +47,11 @@ class LLMGenerator:
         max_tokens: int = 256,
         temperature: float = 0.3
     ) -> str:
+        if context: 
+            ctx_text = "\n".join([d.get("text","")[:300] for d in context if isinstance(d, dict)])[:1500]
+            from src.rewriting.prompt_templates import GENERATION_PROMPT
+            prompt = GENERATION_PROMPT.format(context=ctx_text, question=prompt)
+            
         if self.provider == "ollama":
             return self._ollama(prompt, max_tokens, temperature)
         elif self.provider == "groq":
