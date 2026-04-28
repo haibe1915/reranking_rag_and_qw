@@ -124,6 +124,69 @@ class CodeSwitchingProcessor:
             variants.append(segment)
         
         return list(set(variants))  # Remove duplicates
+      
+    def code_switching_handle(self, query: str) -> List[str]:
+        """Try LLM translation; fallback to bracketing English terms."""
+        if self.llm_client:
+            prompt = CODE_SWITCHING_PROMPT.format(question=query)
+            try:
+                raw = self.llm_client.generate(prompt, [], max_tokens=150)
+                translated = self._parse_answer_block(raw).strip()
+                
+                if (translated
+                    and translated != query
+                    and len(translated) < len(query) * 3
+                    and len(translated.split()) <= len(query.split()) + 5
+                ):
+                    return [translated]
+            except Exception:
+                pass
+
+        english_terms = re.findall(r"\b[a-zA-Z]{2,}\b", query)
+        if english_terms:
+            bracketed = query
+            for term in english_terms[:3]:
+                bracketed = bracketed.replace(term, f"({term})")
+            return [bracketed]
+        return []
+    
+    @staticmethod
+    def _parse_answer_block(text: str) -> str:
+        """Extract content inside <answer>...</answer> if present."""
+        m = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL | re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+        
+        # Fallback: chỉ có <answer> mà không có </answer> (bị cắt do max_tokens)
+        m_open = re.search(r"<answer>(.*)", text, re.DOTALL | re.IGNORECASE)
+        if m_open:
+            return m_open.group(1).strip()
+    
+        # Fallback: không có tag nào
+        return text.strip()
+
+    @staticmethod
+    def _apply_synonyms(text: str) -> str:
+        synonyms = {
+            "là gì": "định nghĩa là gì",
+            "như thế nào": "cách thực hiện như thế nào",
+            "tại sao": "lý do tại sao",
+            "cách": "phương pháp",
+        }
+        result = text
+        lower = text.lower()
+        for key, value in synonyms.items():
+            if key in lower:
+                result = lower.replace(key, value, 1)
+                break
+        return result
+
+    @staticmethod
+    def _reorder_words(text: str) -> str:
+        words = text.split()
+        if len(words) > 4:
+            return " ".join(words[2:] + words[:2])
+        return text
 
 
 class LanguageDetector:

@@ -67,12 +67,19 @@ class HybridRetriever:
 
         if cache_valid:
             print("Loading cached index...")
-            self.faiss_index = faiss.read_index(faiss_path)
-            with open(bm25_path, "rb") as f:
-                self.bm25 = pickle.load(f)
-            with open(corpus_path, "rb") as f:
-                self.corpus = pickle.load(f)
-            return
+            try:
+                self.faiss_index = faiss.read_index(faiss_path)
+                with open(bm25_path, "rb") as f:
+                    self.bm25 = pickle.load(f)
+                with open(corpus_path, "rb") as f:
+                    self.corpus = pickle.load(f)
+                return
+            except Exception as e:
+                # Cache bị corrupt (thường do FAISS version mismatch) → rebuild
+                print(f"⚠️  Cache load failed ({e}), rebuilding index...")
+                for p in [emb_path, faiss_path, bm25_path, corpus_path, hash_path]:
+                    if os.path.exists(p):
+                        os.remove(p)
 
         print("Building index from scratch...")
         self.corpus = valid_docs
@@ -106,8 +113,8 @@ class HybridRetriever:
         if not self.corpus or self.faiss_index is None:
             return []
 
-        n = len(self.corpus)
-        
+        n = min(len(self.corpus), self.faiss_index.ntotal)  # clamp: không search quá số doc trong index
+
         # ── Dùng Reciprocal Rank Fusion thay vì average scores ──
         # RRF ổn định hơn khi nhiều queries có phân phối score khác nhau
         rrf_scores = np.zeros(n, dtype="float64")
